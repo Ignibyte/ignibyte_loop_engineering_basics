@@ -36,6 +36,6 @@ It serves a small notes list as JSON and a plain HTML index. In-memory, no datab
 - JSON field names are snake_case.
 
 ## Quality gates
-Every change must pass, with zero warnings:
-  cargo fmt --check && cargo clippy -- -D warnings && cargo test
-(Part 2 wires these into a single command and a pre-commit gate.)
+Every change must pass, with zero warnings. One command runs them all, fast to slow:
+  ./check.sh          # fmt check -> clippy -D warnings -> tests
+CI runs the same script on every push.
