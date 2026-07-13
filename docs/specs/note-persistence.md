@@ -35,3 +35,7 @@ so they survive a restart. Nothing else changes.
 - **IF** a write to the notes file fails, **THEN** the service shall return `500` and leave the in-memory list unchanged.
 
 Each criterion maps to exactly one test in `tests/api.rs`. These are the tests Part 5 will assert — written here, before the code exists, so they can't just mirror the implementation.
+
+## Definition of done
+
+The work is complete only when **every acceptance criterion above is verified by a passing test** and the full quality suite is green — each criterion checked off, not assumed. A completion hook enforces this: the agent cannot mark the spec done while any criterion is still unproven.
