@@ -35,6 +35,10 @@ It serves a small notes list as JSON and a plain HTML index. In-memory, no datab
 - Handlers stay thin: read the request, call into state, return a response — no logic inline.
 - JSON field names are snake_case.
 
+## Before you plan a change
+Read `docs/architecture.md` (the decisions and their *why*) and any relevant
+`docs/specs/*.md` first, so your plan builds *with* the codebase, not against it.
+
 ## Quality gates
 Every change must pass, with zero warnings. One command runs them all, fast to slow:
   ./check.sh          # fmt check -> clippy -D warnings -> tests
