@@ -3,7 +3,12 @@
 //! Handlers stay thin: read the request, call into [`AppState`], return a
 //! response. No business logic lives here.
 
-use axum::{extract::State, http::StatusCode, response::Html, Json};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{Html, IntoResponse, Response},
+    Json,
+};
 
 use crate::model::{NewNote, Note};
 use crate::state::AppState;
@@ -28,10 +33,14 @@ pub async fn list_notes(State(state): State<AppState>) -> Json<Vec<Note>> {
     Json(state.all())
 }
 
-/// `POST /api/notes` — add a note; returns the created note as JSON with `201`.
-pub async fn create_note(
-    State(state): State<AppState>,
-    Json(body): Json<NewNote>,
-) -> (StatusCode, Json<Note>) {
-    (StatusCode::CREATED, Json(state.add(body.text)))
+/// `POST /api/notes` — add a note. Returns `201` with the note on success, or
+/// `500` if it could not be persisted.
+pub async fn create_note(State(state): State<AppState>, Json(body): Json<NewNote>) -> Response {
+    match state.add(body.text) {
+        Ok(note) => (StatusCode::CREATED, Json(note)).into_response(),
+        Err(err) => {
+            eprintln!("failed to persist note: {err}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A single note held by the service.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
     /// Stable identifier, assigned in insertion order (1-based).
     pub id: usize,
