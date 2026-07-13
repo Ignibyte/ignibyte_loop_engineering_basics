@@ -12,8 +12,9 @@ It serves:
 - `GET /api/notes` — the notes list, as JSON
 - `POST /api/notes` — add a note (`{ "text": "..." }`)
 
-Notes live in memory (no database), so they reset on restart. Persisting them
-is the feature the series threads through Parts 3–6.
+Notes are held in memory and persisted to a JSON file (`notes.json`; override
+with the `NOTES_FILE` environment variable), so they survive a restart. There's
+no database — the file is the whole store.
 
 ## Run it
 
@@ -27,7 +28,7 @@ cargo run
 Every change must pass, with zero warnings:
 
 ```
-cargo fmt --check && cargo clippy -- -D warnings && cargo test
+./check.sh   # fmt check -> clippy -D warnings -> tests -> docs
 ```
 
 ## How this repo is organized

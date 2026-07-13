@@ -12,9 +12,10 @@ can't tell you. Read this before planning a change.
 
 ## Decisions
 
-- **In-memory, no database (yet).** Notes live in a `Vec<Note>` behind a
-  `Mutex`. Chosen for simplicity while the app is a teaching demo — a database is
-  deliberately out of scope until a feature genuinely needs one.
+- **In-memory, file-backed, no database.** Notes live in a `Vec<Note>` behind a
+  `Mutex` and are mirrored to a JSON file so they survive a restart. Still no
+  database — deliberately out of scope until a feature genuinely needs one; a
+  flat JSON file is enough for a single-process demo.
 - **lib + bin split.** The router lives in the library so integration tests can
   drive it with `oneshot`, no socket. `main.rs` only binds a port and serves.
 - **Errors, not panics, in request paths.** Handlers return a `Result` or a
