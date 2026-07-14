@@ -2,7 +2,7 @@
 type: Spec
 title: Notes UI
 description: The page at / becomes a real notes app — list the notes, add one, refuse an empty one.
-status: draft
+status: approved
 tags: [spec, ui, browser, validation]
 timestamp: 2026-07-13T21:23:36-05:00
 ---
@@ -55,6 +55,7 @@ whole document on submit, or post rubbish to the API. Somebody has to open it.
 | 5 | WHILE notes exist in the store, the page shall list them on first load. | `shows_existing_notes_on_load` | e2e |
 | 6 | WHEN a user submits non-empty text, the page shall show the new note without reloading the document. | `adds_a_note_without_a_reload` | e2e |
 | 7 | IF a user submits empty text, THEN the page shall show a validation message and send no request. | `rejects_an_empty_note_in_the_ui` | e2e |
+| 8 | WHEN the page loads, it shall raise no console error, no uncaught exception, and no failing request. | `loads_without_errors` | e2e |
 
 # Definition of done
 
