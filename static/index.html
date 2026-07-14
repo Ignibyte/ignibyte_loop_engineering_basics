@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notes — Beginner Loop Engineering</title>
+    <!--
+      Inline, so the browser never asks the server for /favicon.ico and never gets a
+      404 for it. Headless browsers don't request favicons at all, which is why the
+      browser suite can't see that particular bug — a human opening the page found it.
+      Not every hole is one a test will dig for you.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23d1471f'/%3E%3Cg stroke='%23fff' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M9 11h14M9 17h14M9 23h8'/%3E%3C/g%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfbfd;
+        --panel: #ffffff;
+        --line: #e4e4e9;
+        --ink: #16161a;
+        --muted: #6b6b76;
+        --accent: #d1471f;
+        --danger: #b3261e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #101014;
+          --panel: #17171c;
+          --line: #2a2a32;
+          --ink: #ececf1;
+          --muted: #9a9aa6;
+          --accent: #ff7043;
+          --danger: #ff6b6b;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 3rem 1.25rem;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 40rem; margin: 0 auto; }
+      h1 { margin: 0 0 0.25rem; font-size: 1.6rem; letter-spacing: -0.02em; }
+      .tagline { margin: 0 0 2rem; color: var(--muted); }
+      .tagline a { color: inherit; }
+
+      form { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+      input[type="text"] {
+        flex: 1;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--ink);
+        font: inherit;
+      }
+      input[type="text"]:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      button {
+        padding: 0.7rem 1.1rem;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(1.08); }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+      #status { min-height: 1.5rem; margin: 0 0 1.25rem; font-size: 0.9rem; color: var(--muted); }
+      #status[data-tone="error"] { color: var(--danger); font-weight: 600; }
+
+      ul { list-style: none; margin: 0; padding: 0; }
+      li {
+        display: flex;
+        gap: 0.85rem;
+        align-items: baseline;
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        margin-bottom: 0.5rem;
+      }
+      li .id {
+        flex: none;
+        min-width: 1.5rem;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        font-size: 0.85rem;
+      }
+      li .text { overflow-wrap: anywhere; }
+
+      #empty {
+        padding: 2rem 1rem;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        text-align: center;
+        color: var(--muted);
+      }
+      [hidden] { display: none !important; }
+
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      footer a { color: var(--accent); }
+      code {
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        font-size: 0.85em;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Notes</h1>
+      <p class="tagline">
+        The demo app for
+        <a href="https://ignibyte.com/lab/beginner-loop-engineering-documentation-foundation">Beginner Loop Engineering</a>.
+        Notes are stored in a JSON file, so they survive a restart.
+      </p>
+
+      <form id="new-note" autocomplete="off">
+        <label class="visually-hidden" for="text" hidden>Note text</label>
+        <input
+          id="text"
+          name="text"
+          type="text"
+          placeholder="Write a note…"
+          data-testid="note-input"
+        />
+        <button type="submit" data-testid="add-note">Add</button>
+      </form>
+
+      <p id="status" role="status" aria-live="polite" data-testid="status"></p>
+
+      <ul id="notes" data-testid="note-list"></ul>
+      <p id="empty" data-testid="empty-state" hidden>No notes yet. Add the first one above.</p>
+
+      <footer>
+        API: <code>GET /api/notes</code> · <code>POST /api/notes</code> · <code>GET /healthz</code><br />
+        Source on <a href="https://github.com/Ignibyte/ignibyte_loop_engineering_basics">GitHub</a>.
+      </footer>
+    </main>
+
+    <script>
+      const form = document.querySelector("#new-note");
+      const input = document.querySelector("#text");
+      const button = form.querySelector("button");
+      const list = document.querySelector("#notes");
+      const empty = document.querySelector("#empty");
+      const status = document.querySelector("#status");
+
+      /** Show a message under the form. `tone` is "info" or "error". */
+      function say(message, tone = "info") {
+        status.textContent = message;
+        status.dataset.tone = tone;
+      }
+
+      /** Replace the rendered list with `notes`, toggling the empty state. */
+      function render(notes) {
+        list.replaceChildren(
+          ...notes.map((note) => {
+            const li = document.createElement("li");
+            li.dataset.testid = "note";
+
+            const id = document.createElement("span");
+            id.className = "id";
+            id.textContent = `#${note.id}`;
+
+            const text = document.createElement("span");
+            text.className = "text";
+            text.textContent = note.text;
+
+            li.append(id, text);
+            return li;
+          }),
+        );
+        empty.hidden = notes.length > 0;
+      }
+
+      /** Fetch the notes list and render it. */
+      async function load() {
+        try {
+          const response = await fetch("/api/notes");
+          if (!response.ok) throw new Error(`GET /api/notes returned ${response.status}`);
+          render(await response.json());
+        } catch (error) {
+          say(`Could not load notes: ${error.message}`, "error");
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        // Criterion: an empty or whitespace-only note never reaches the API.
+        const text = input.value.trim();
+        if (text === "") {
+          say("A note needs some text.", "error");
+          input.focus();
+          return;
+        }
+
+        button.disabled = true;
+        say("Saving…");
+        try {
+          const response = await fetch("/api/notes", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          if (!response.ok) throw new Error(`the server returned ${response.status}`);
+
+          input.value = "";
+          say("Saved. It will still be here after a restart.");
+          await load();
+        } catch (error) {
+          // The note was not stored, so it must not appear in the list.
+          say(`Could not save the note — ${error.message}`, "error");
+        } finally {
+          button.disabled = false;
+          input.focus();
+        }
+      });
+
+      load();
+    </script>
+  </body>
+</html>

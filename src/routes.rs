@@ -1,7 +1,8 @@
 //! HTTP handlers — one per endpoint.
 //!
 //! Handlers stay thin: read the request, call into [`AppState`], return a
-//! response. No business logic lives here.
+//! response. No business logic lives here — validating a note belongs to the
+//! model, storing one belongs to the state.
 
 use axum::{
     extract::State,
@@ -10,17 +11,18 @@ use axum::{
     Json,
 };
 
-use crate::model::{NewNote, Note};
+use crate::model::{ApiError, NewNote, Note};
 use crate::state::AppState;
 
-/// `GET /` — a tiny HTML index describing the service.
+/// The notes app, baked into the binary at compile time.
+///
+/// Embedding it keeps the service a single self-contained binary: no asset
+/// directory to ship alongside it, and no static-file middleware to add.
+const INDEX_HTML: &str = include_str!("../static/index.html");
+
+/// `GET /` — the notes app: list the notes, add a note.
 pub async fn index() -> Html<&'static str> {
-    Html(
-        "<!doctype html><title>ignibyte_loop_engineering_basics</title>\
-         <h1>ignibyte_loop_engineering_basics</h1>\
-         <p>Demo web app for the Beginner Loop Engineering series.</p>\
-         <p>Try <code>GET /api/notes</code> or <code>GET /healthz</code>.</p>",
-    )
+    Html(INDEX_HTML)
 }
 
 /// `GET /healthz` — liveness check.
@@ -33,14 +35,29 @@ pub async fn list_notes(State(state): State<AppState>) -> Json<Vec<Note>> {
     Json(state.all())
 }
 
-/// `POST /api/notes` — add a note. Returns `201` with the note on success, or
-/// `500` if it could not be persisted.
+/// `POST /api/notes` — add a note.
+///
+/// Returns `201` with the stored note, `400` if the text is empty, or `500` if
+/// the note could not be persisted — in which case nothing is stored.
 pub async fn create_note(State(state): State<AppState>, Json(body): Json<NewNote>) -> Response {
-    match state.add(body.text) {
+    let text = match body.into_text() {
+        Ok(text) => text,
+        Err(invalid) => {
+            let body = ApiError {
+                error: invalid.message(),
+            };
+            return (StatusCode::BAD_REQUEST, Json(body)).into_response();
+        }
+    };
+
+    match state.add(text) {
         Ok(note) => (StatusCode::CREATED, Json(note)).into_response(),
         Err(err) => {
             eprintln!("failed to persist note: {err}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            let body = ApiError {
+                error: "could not save the note",
+            };
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(body)).into_response()
         }
     }
 }

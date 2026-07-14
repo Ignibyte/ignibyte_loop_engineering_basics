@@ -199,3 +199,82 @@ async fn write_failure_returns_500_and_keeps_memory() {
     let notes: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(notes, json!([]));
 }
+
+// --- The notes UI (the notes-ui spec; the browser half lives in e2e/notes.spec.ts) ---
+
+#[tokio::test]
+async fn index_serves_the_notes_app() {
+    let response = app()
+        .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let content_type = response.headers()["content-type"].to_str().unwrap();
+    assert!(
+        content_type.starts_with("text/html"),
+        "expected HTML, got {content_type}"
+    );
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let html = std::str::from_utf8(&body).unwrap();
+    // The app, not a placeholder: the list and the form both have to be there.
+    assert!(html.contains(r#"data-testid="note-list""#), "no note list");
+    assert!(
+        html.contains(r#"data-testid="note-input""#),
+        "no note input"
+    );
+}
+
+#[tokio::test]
+async fn create_rejects_empty_text() {
+    let application = app();
+
+    let rejected = application
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/notes")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"text":"   "}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(rejected.status(), StatusCode::BAD_REQUEST);
+
+    // Rejected means *not stored* — a 400 that still saved the note would be a lie.
+    let listed = application
+        .oneshot(
+            Request::builder()
+                .uri("/api/notes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = listed.into_body().collect().await.unwrap().to_bytes();
+    let notes: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(notes, json!([]));
+}
+
+#[tokio::test]
+async fn create_trims_surrounding_whitespace() {
+    let response = app()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/notes")
+                .header("content-type", "application/json")
+                .body(Body::from("{\"text\":\"  spaced out \\n\"}"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let note: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(note["text"], "spaced out");
+}
