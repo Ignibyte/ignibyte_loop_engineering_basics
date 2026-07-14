@@ -1,2 +1,11 @@
 /target
 /notes.json
+
+# Browser suite
+/node_modules
+/.e2e-notes.json
+/playwright-report
+/test-results
+
+# Per-session state written by the hooks (see .claude/README.md)
+/.claude/.receipts
