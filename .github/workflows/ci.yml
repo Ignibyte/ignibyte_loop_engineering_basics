@@ -4,11 +4,36 @@ on: [push, pull_request]
 
 jobs:
   gates:
+    name: Gates (fmt, clippy, tests, docs)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      # The exact same gates a developer runs locally — one source of truth.
+      # The exact same script a developer runs locally — one definition of green.
       - run: ./check.sh
+
+  browser:
+    name: Browser suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Boots the real service and drives it in a real browser.
+      - run: npx playwright test
+
+  definition-of-done:
+    name: Definition of done
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Every acceptance criterion in every approved spec names a test. Is it real?
+      - run: .claude/hooks/spec-done.sh
